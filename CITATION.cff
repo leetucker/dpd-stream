@@ -1,0 +1,20 @@
+cff-version: 1.2.0
+message: "If you use this software in your research, please cite it as below."
+type: software
+title: "dpd-stream"
+abstract: "Out-of-core difference and system GMM for dynamic panels (Arellano-Bond, Blundell-Bond). One-step, two-step or iterated estimation with flexible instrument sets, Windmeijer-corrected and clustered inference, specification and identification tests, Ahn-Schmidt nonlinear moments and absorbed fixed effects, computed in streamed passes so that panel data far larger than memory can be used. Conventions follow Stata's xtabond2; results are tested against it, xtdpdgmm and other implementations."
+authors:
+  - family-names: Tucker
+    given-names: Lee
+    email: lee.c.tucker@census.gov
+version: 0.1.0
+license: MIT
+repository-code: "https://github.com/leetucker/dpd-stream"
+url: "https://github.com/leetucker/dpd-stream"
+keywords:
+  - econometrics
+  - dynamic panel data
+  - GMM
+  - Arellano-Bond
+  - Blundell-Bond
+  - out-of-core

@@ -1,0 +1,19 @@
+# R and the R packages of the benchmarks' "(R)" configurations, from
+# conda-forge:
+#
+#   micromamba create -p benchmarks/external/.r -f benchmarks/external/environment.yml
+#
+# (or conda/mamba with the same arguments). See benchmarks/README.md.
+name: dpd-stream-benchmarks-r
+channels:
+  - conda-forge
+dependencies:
+  - r-base=4.5.3
+  - r-arrow
+  - r-jsonlite
+  - r-plm=2.6_7            # pgmm: difference and system GMM
+  # pdynmc (linear and nonlinear Ahn-Schmidt moments) is not on conda-forge;
+  # it is installed from CRAN into this prefix, see benchmarks/README.md
+  - r-data.table
+  - r-matrix
+  - r-nloptr                # for optimx, which pdynmc needs

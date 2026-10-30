@@ -1,0 +1,20 @@
+{
+ "cpu": "Intel(R) Core(TM) Ultra 7 258V",
+ "logical_cpus": 8,
+ "memory_gb": 26.4,
+ "platform": "Linux-5.15.167.4-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+ "python": "3.12.3",
+ "dpd-stream": "0.1.0",
+ "hdfe-stream": "0.6.2",
+ "polars": "2.1.0",
+ "numpy": "2.5.4",
+ "numba": "0.68.1",
+ "scipy": "1.18.1",
+ "pandas": "3.1.0",
+ "r:R": "4.5.3",
+ "r:plm": "2.6.7",
+ "r:pdynmc": "0.9.13",
+ "pydynpd": "0.2.2",
+ "systemgmmkit": "1.0.5",
+ "measured": "2026-10-29"
+}

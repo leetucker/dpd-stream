@@ -10,5 +10,4 @@ in the repository).
 
 scale
 instruments
-systemgmmkit
 ```

@@ -134,6 +134,7 @@ and result classes it uses), Polars, NumPy, numba and SciPy.
 
 examples/index
 how_it_works
+implementations
 ```
 
 ```{toctree}

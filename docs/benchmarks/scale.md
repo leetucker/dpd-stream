@@ -39,7 +39,8 @@ finished; the others are listed below each one.
 - **pdynmc** takes 280 to 340 seconds at 10,000 panels and times out at
   100,000.
 - **systemgmmkit** takes 475 to 500 seconds at 100,000 panels. At a million
-  panels its panel-time-grid check refuses the data (see its page).
+  panels its panel-time-grid check refuses the data (see
+  [differences between implementations](../implementations.md)).
 
 ```{image} ../figures/scale_memory.light.svg
 :class: only-light benchmark

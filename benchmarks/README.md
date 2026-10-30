@@ -90,7 +90,7 @@ VIRTUAL_ENV=benchmarks/external/.systemgmmkit uv pip install systemgmmkit pyarro
 ```
 
 `python benchmarks/external/systemgmmkit_compare.py` compares its numbers with
-dpd-stream's (`docs/benchmarks/systemgmmkit.md`).
+dpd-stream's (see `docs/implementations.md`).
 
 **Paths.** `DPD_BENCH_RSCRIPT`, `DPD_BENCH_PYDYNPD_PYTHON` and
 `DPD_BENCH_SYSTEMGMMKIT_PYTHON` point at other

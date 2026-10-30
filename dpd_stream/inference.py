@@ -1,8 +1,8 @@
 """The algebra after the passes: everything here works on j x j and j x K
 sums, never on data.
 
-The conventions are xtabond2's (version 3.7.2), whose results these
-reproduce: the generalized inverse by sweeping in column order (`invsym`),
+The conventions are xtabond2's (version 3.7.2), as
+follows: the generalized inverse by sweeping in column order (`invsym`),
 sigma^2 for the one-step variance and the Sargan test, the Windmeijer
 (2005) correction, the Arellano-Bond (1991) tests, and the
 difference-in-Sargan/Hansen tests, which re-estimate without each group

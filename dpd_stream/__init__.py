@@ -1,5 +1,6 @@
 """dpd-stream: Arellano-Bond (difference) and Blundell-Bond (system) GMM
-for dynamic panels, out of core, with xtabond2's estimators and tests.
+for dynamic panels, out of core. Names and conventions follow Stata's
+xtabond2 where they overlap.
 
 The data are read once (pass 0) into blocks of whole panels sorted by
 time; every later pass reads the blocks, builds each panel's rows and

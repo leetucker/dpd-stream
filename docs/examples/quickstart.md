@@ -59,7 +59,7 @@ Underidentification (Kleibergen-Paap rk LM, robust): chi2(31) = 7428.63, p = 0.0
 └─────────────┴──────────┴────────────┴────────────┴──────────┘
 ```
 
-The report is xtabond2's, and so are the numbers. How to read the tests:
+How to read the tests:
 
 - **AR(1)** rejects, as it must: first differences are serially correlated
   by construction.

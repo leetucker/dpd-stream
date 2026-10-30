@@ -70,20 +70,20 @@ See [how it works](how_it_works.md).
 - Difference or system GMM: one-step, two-step or iterated.
 - Transformation by first differences or forward orthogonal deviations.
 
-**Instruments**, with every xtabond2 instrument option:
+**Instruments**:
 - GMM-style with lag limits, `collapse`, `eq='diff'|'level'|'both'`, `split`,
   `passthru`, and backward orthogonal deviations (`orthogonal`);
 - IV-style with `eq`, `passthru` and `mz`;
-- xtabond2's `h()` matrices, and `pca`.
+- `h()` prior-covariance matrices, and `pca`.
 
-**Inference**, as xtabond2 computes it:
+**Inference**:
 - Windmeijer's (2005) correction;
 - one-way and multi-way clustering, which also define the two-step weight
   matrix;
 - `small`-sample statistics;
 - the Arellano–Bond AR(m), Sargan, Hansen and difference-in-Hansen tests.
 
-**Beyond xtabond2**
+**Also**
 - Iterated GMM.
 - Andrews–Lu model and moment selection criteria.
 - Kleibergen–Paap and Sanderson–Windmeijer identification tests (Windmeijer
@@ -106,7 +106,8 @@ See [how it works](how_it_works.md).
 - the data are large, from tens of thousands of panels to hundreds of
   millions of rows, or don't fit in memory;
 - you are fitting many specifications and want each in seconds;
-- you want xtabond2's exact results in Python.
+- you are moving an xtabond2 workflow to Python and want results that
+  match it.
 
 On Arellano and Bond's 140 firms any implementation is instant.
 

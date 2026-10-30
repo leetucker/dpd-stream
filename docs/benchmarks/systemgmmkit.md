@@ -83,6 +83,13 @@ only (it ignores `collapse=False`), uses one clustering (by panel) and no
 weights, and has none of dpd-stream's Ahn–Schmidt moments, absorbed effects
 or identification tests. It is not a second reference for those.
 
+**Speed.** On the collapsed models it takes 2 to 4 seconds at 1,000 panels,
+25 to 43 seconds at 10,000 and 475 to 500 seconds at 100,000 (1.8 to 3.2 GB),
+against 0.1, 0.1 and 0.5 to 0.6 seconds for dpd-stream. At a million panels
+it refused the data: its check on the time variable raised "Integral
+panel-time labels imply an unsafe unit-spaced grid" for 8 million rows, and
+asks for a contiguous period index. We did not recode the time variable for it.
+
 These differences were found and characterized, not traced to their code as
 the Stata ones were; systemgmmkit is new, and its authors state that its
 agreement with xtabond2 is certified on six specifications.

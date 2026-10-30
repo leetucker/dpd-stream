@@ -16,7 +16,7 @@ instruments:
 - **IV-style instruments:** one column per variable.
 
 **One-step GMM** weights the moments by $A_1 = (\sum_i Z_i'HZ_i)^{-1}$, where
-$H$ is xtabond2's prior covariance of the transformed errors:
+$H$ is the prior covariance of the transformed errors (xtabond2's `h()`):
 
 $$\hat\beta_1 = (X'Z A_1 Z'X)^{-1} X'Z A_1 Z'y.$$
 

@@ -43,10 +43,12 @@ difference GMM. It works with:
 It does not work with PCA, or with Ahn and Schmidt's moments, which are
 nonlinear in the effects.
 
-**`| year` is different.** Time effects alone are few, so `| year` is
-estimated as a dummy per period, each its own instrument, and the dummies are
-not reported. Everything is then exact, in both estimators, with every
-option.
+**`| year` is absorbed by dummies.** Time effects alone are few, so `| year`
+is not partialled out: it is estimated as a dummy per period, each its own
+instrument, and the dummies are not reported (`fit.absorbed` says
+`'method': 'dummies'`, against `'cells'` for `region^year`). Everything is
+then exact, in both estimators, with every option, including PCA and Ahn and
+Schmidt's moments.
 
 :::{dropdown} The script
 ```{literalinclude} ../../examples/absorbed.py

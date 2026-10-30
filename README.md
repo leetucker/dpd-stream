@@ -68,17 +68,21 @@ matrix: xtabond2, xtdpdgmm, plm, pdynmc and pydynpd.
 ## Performance
 
 Two-step GMM with Windmeijer-corrected standard errors on simulated panels
-of 8 periods, on a laptop (preliminary; an EC2 run will replace these):
+of 8 periods, on an EC2 spot instance (16 vCPUs, 32 GiB):
 
 | Panels (rows) | | dpd-stream | pydynpd | plm `pgmm` | pdynmc |
 |---|---|---|---|---|---|
-| 100,000 (800,000) | difference GMM | 0.8 s, 1.3 GB | 21 s, 1.0 GB | 89 s, 5.4 GB | > 600 s |
-| 1,000,000 (8 million) | difference GMM | 7.3 s, 2.3 GB | 155 s, 7.9 GB | out of memory | — |
-| 1,000,000 (8 million) | system GMM | 7.4 s, 2.2 GB | 162 s, 8.4 GB | > 600 s | — |
+| 100,000 (800,000) | difference GMM | 0.6 s, 1.3 GB | 15 s, 1.0 GB | 72 s, 5.2 GB | > 1,800 s |
+| 1,000,000 (8 million) | difference GMM | 5.7 s, 1.6 GB | 158 s, 7.7 GB | out of memory | — |
+| 1,000,000 (8 million) | system GMM | 5.3 s, 1.6 GB | 159 s, 8.2 GB | 799 s, 26 GB | — |
+| 10,000,000 (80 million) | system GMM | 80 s, 9.7 GB | out of memory | out of memory | — |
 
-The estimates agree to about 1e-14. With uncollapsed instruments over 20
-periods (5,000 panels), dpd-stream takes 0.3 s; pydynpd, plm and pdynmc
-take 76, 110 and 520 s. See the benchmarks in the documentation.
+Estimates agree to about 1e-13 (system GMM: with pydynpd; plm and pdynmc enter
+the year effects differently). With uncollapsed instruments over 20 periods
+(5,000 panels), dpd-stream takes 0.24 s; pydynpd, plm and pdynmc take 24, 47
+and 441 s, and at 30 periods plm and pdynmc run out of memory. systemgmmkit,
+which builds collapsed instruments only, takes 500 s at 100,000 panels. See the
+benchmarks in the documentation.
 
 ## Install
 

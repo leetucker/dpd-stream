@@ -20,7 +20,8 @@ def dpd_stream(fml: str, data: Source, panel: tuple, *, system: bool = False,
                nl: str | None = None, nl_weight: float = 1.0,
                workdir: PathLike | None = None, **options) -> DPDResult:
     """Arellano-Bond (difference) or Blundell-Bond (system) GMM for dynamic
-    panels, as Stata's xtabond2, out of core.
+    panels, out of core. Option names and conventions follow Stata's xtabond2
+    where they overlap.
 
     Parameters
     ----------

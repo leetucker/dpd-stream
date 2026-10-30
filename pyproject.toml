@@ -82,8 +82,9 @@ filterwarnings = [
 [tool.ruff]
 line-length = 100
 target-version = "py310"
-# the benchmarks' R and pydynpd environments
-extend-exclude = ["benchmarks/external/.r", "benchmarks/external/.pydynpd"]
+# the benchmarks' R, pydynpd and systemgmmkit environments
+extend-exclude = ["benchmarks/external/.r", "benchmarks/external/.pydynpd",
+  "benchmarks/external/.systemgmmkit"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP"]

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from hdfe_stream.core.profile import Profile
 from hdfe_stream.core.typing import PathLike, Source
 from scipy import stats
 
@@ -18,7 +19,8 @@ def dpd_stream(fml: str, data: Source, panel: tuple, *, system: bool = False,
                components: int = 0, weights: str | None = None,
                weights_type: str = "aweights", tdelta: int | None = None,
                nl: str | None = None, nl_weight: float = 1.0,
-               workdir: PathLike | None = None, **options) -> DPDResult:
+               workdir: PathLike | None = None, profile: bool = False,
+               **options) -> DPDResult | Profile:
     """Arellano-Bond (difference) or Blundell-Bond (system) GMM for dynamic
     panels, out of core. Option names and conventions follow Stata's xtabond2
     where they overlap.
@@ -101,10 +103,15 @@ def dpd_stream(fml: str, data: Source, panel: tuple, *, system: bool = False,
     workdir : str or Path, optional
         Where the run directory goes (default ``$DPD_STREAM_WORKDIR``, then
         ``$HDFE_STREAM_WORKDIR``, then the system temporary directory).
+    profile : bool, default False
+        Return a `hdfe_stream.Profile` -- the estimated memory and disk, and a
+        resource request (``p.recommend()``) -- instead of fitting. It reads
+        the data once and holds nothing.
     **options
         ``storage`` (``"disk"`` or ``"memory"``), ``block_mb`` (rows per
         block, by size), ``tol`` and ``maxiter`` (iterated GMM),
-        ``n_threads``, ``diffsargan`` (False skips the difference-in-Hansen
+        ``n_threads``, ``max_memory_gb`` (the memory the fit may use; the default is the job's
+        allocation) and ``memory_reserve`` (the share of it held back, default 0.15), ``diffsargan`` (False skips the difference-in-Hansen
         tests), ``idtests`` (``"auto"``: the identification tests when the
         excluded instruments times the endogenous regressors are at most
         500; True, False), ``verbose``, ``logger``, ``log_level``.
@@ -127,6 +134,8 @@ def dpd_stream(fml: str, data: Source, panel: tuple, *, system: bool = False,
               collapse=collapse, constant=constant, pca=pca, components=components,
               weights=weights, weights_type=weights_type, tdelta=tdelta, workdir=workdir,
               nl=nl, nl_weight=nl_weight, **options)
+    if profile:
+        return est.profile()
     f = est.fit()
     return _result(est, f)
 
@@ -177,7 +186,8 @@ def _result(est, f) -> DPDResult:
         fml=est.fml, depvar=est.spec.depvar, coefnames=list(f.names), beta=f.b, vcov=f.V,
         vcov_type=key, df_t=df_t, n_obs=int(i["n_obs"]), all_vcovs=all_vcovs,
         n_clusters=i["n_clusters"], collin_vars=list(i["dropped"]),
-        diagnostics=dict(seconds=i["seconds"], wttot=i["wttot"], j_columns=i["j"],
+        diagnostics=dict(seconds=i["seconds"], peak_rss_gb=i.get("peak_rss_gb"),
+                         wttot=i["wttot"], j_columns=i["j"],
                          generalized_inverse_one_step=i["pinv1"],
                          generalized_inverse_two_step=i.get("pinv2"),
                          iterations=i.get("iterations"), notes=lay.notes),

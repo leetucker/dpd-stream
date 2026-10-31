@@ -90,6 +90,10 @@ benchmarks in the documentation.
 pip install dpd-stream
 ```
 
+Python 3.10 or later. On Python 3.15, pyfixest 0.60 (which hdfe-stream's formula extra brings in)
+has no wheels yet: it builds from source with a Rust toolchain and
+`PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1` set; everything else installs from wheels.
+
 ## Documentation
 
 The documentation is at https://leetucker.github.io/dpd-stream/. Build it

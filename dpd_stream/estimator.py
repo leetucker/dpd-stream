@@ -27,6 +27,7 @@ import numpy as np
 import polars as pl
 from hdfe_stream.core.report import warn
 from hdfe_stream.core.store import PolarsEngine
+from hdfe_stream.core.resources import MemoryBudget, peak_rss_gb, reset_peak_rss, thread_scope
 from hdfe_stream.core.utils import as_lazy, single_blas
 from hdfe_stream.core.workspace import Run, _base_dir
 
@@ -116,7 +117,7 @@ class DPD(_Passes, _Absorb, _IdTests, _NonlinearMoments):
                  storage="disk", block_mb=64, tol=1e-9, maxiter=100, n_threads=None,
                  idtests="auto", nl=None, nl_weight=1.0, verbose=True, logger=None,
                  log_level=20,
-                 polars_engine="cpu"):
+                 polars_engine="cpu", max_memory_gb=None, memory_reserve=None):
         if not (isinstance(panel, (tuple, list)) and len(panel) == 2):
             raise ValueError("panel must be (panel id, time), e.g. panel=('firm', 'year')")
         if transform not in ("fd", "fod"):
@@ -154,6 +155,8 @@ class DPD(_Passes, _Absorb, _IdTests, _NonlinearMoments):
             raise ValueError("nl_weight must be >= 0")
         self.nl, self.nl_weight = nl, float(nl_weight)
         self.nlkind = {None: 0, "noserial": 1, "iid": 2}[nl]
+        self.budget = MemoryBudget(max_memory_gb, memory_reserve)
+        self._threads = n_threads                   # held by fit(), then restored
         self.n_threads = n_threads or numba.get_num_threads()
         self.log = _log_fn(verbose, logger, log_level)
         self.logger = logger
@@ -161,7 +164,32 @@ class DPD(_Passes, _Absorb, _IdTests, _NonlinearMoments):
 
     # ------------------------------------------------------------------ driver
     def fit(self):
-        t0 = time.time()
+        reset_peak_rss()
+        with thread_scope(self._threads):
+            self.n_threads = self._threads or numba.get_num_threads()   # the accumulators' count
+            out = self._fit()
+        rss = peak_rss_gb()
+        out.info["peak_rss_gb"] = None if rss is None else round(rss, 3)
+        return out
+
+    def _copies(self, per_copy_bytes, want):
+        """How many per-thread copies of an accumulator of `per_copy_bytes` fit in
+        half the memory headroom: `want` (one per thread) if they do, fewer
+        otherwise, and at least one. Fewer copies is fewer threads on that
+        pass, not a different answer."""
+        fit = int(0.5 * self.budget.headroom_gb() * 1e9 // max(per_copy_bytes, 1))
+        return max(1, min(want, fit))
+
+    def profile(self):
+        """The memory and disk this fit would need (a `Profile`), from one scan
+        of the data; nothing is fitted. See `dpd_stream.profile`."""
+        from .profile import profile
+        return profile(self)
+
+    def _prepare(self):
+        """Parse the formula and settle the options against the data's schema;
+        returns the LazyFrame and whether this is a one-step non-robust fit.
+        Nothing is read but the levels of categorical variables."""
         lf = as_lazy(self.data)
         schema = lf.collect_schema()
 
@@ -197,6 +225,12 @@ class DPD(_Passes, _Absorb, _IdTests, _NonlinearMoments):
             robust = True
         self.robust, self.cvars, self.vkey = robust, cvars, key
         onestepnonrobust = self.steps == 1 and not robust
+        return lf, onestepnonrobust
+
+    def _fit(self):
+        t0 = time.time()
+        lf, onestepnonrobust = self._prepare()
+        spec, cvars = self.spec, self.cvars
 
         base = _base_dir(self.workdir or os.environ.get(WORKDIR_ENV))
         run = Run(base, auto_cleanup=True)
@@ -246,11 +280,18 @@ class DPD(_Passes, _Absorb, _IdTests, _NonlinearMoments):
         lay, st = self.lay, self.store
         jf, K = lay.j, lay.K
         nch = self.n_threads
-        mem = nch * jf * jf * 8
-        if mem > 8e9:
-            warn(f"{jf:,} instrument columns: the per-thread moment matrices need "
-                 f"{mem / 1e9:.1f} GB; consider collapse=True or tighter lag limits",
+        # S1, and Z'Z (the identification tests and PCA need it) of the same size
+        per = jf * jf * 8 * (2 if self.idtests is not False else 1)
+        if not self.budget.fits(per / 1e9):
+            warn(f"{jf:,} instrument columns: even one set of moment matrices needs "
+                 f"{per / 1e9:.1f} GB and {self.budget.headroom_gb():.1f} GB is free; consider "
+                 "collapse=True, tighter lag limits, idtests=False or a larger max_memory_gb",
                  self.logger)
+        fewer = self._copies(per, nch)
+        if fewer < nch:
+            self.log(f"pass 1: {fewer} of {nch} per-thread moment accumulators fit in memory "
+                     f"({per / 1e9:.2f} GB each); the pass runs on {fewer} threads")
+            nch = fewer
         H = lay_mod.h_matrix(self.h, self.orth, self.orth, self.system, lay.T)
         hp, hi, hv = lay_mod.csr(H)
         self.H = H
@@ -278,10 +319,12 @@ class DPD(_Passes, _Absorb, _IdTests, _NonlinearMoments):
         if self.absorb_g is not None:
             ng = st.n_absorb_groups
             ncell = ng * lay.T
-            nchc = nch if nch * ncell * jf * 16 < 4e9 else 1
-            if ncell * jf * 16 > 8e9:
+            if not self.budget.fits(ncell * jf * 16 / 1e9):
                 raise MemoryError(f"{ncell:,} absorbed cells x {jf:,} instruments: the cell "
-                                  "sums do not fit in memory")
+                                  f"sums need {ncell * jf * 16 / 1e9:.1f} GB and "
+                                  f"{self.budget.headroom_gb():.1f} GB is free "
+                                  f"({self.budget}); raise max_memory_gb or absorb a coarser effect")
+            nchc = self._copies(ncell * jf * 16, nch)
             cells = dict(DDx=np.zeros((nchc, ng, lay.T, lay.T)),
                          DHD=np.zeros((nchc, ng, lay.T, lay.T)),
                          CZw=np.zeros((nchc, ncell, jf)), CHZ=np.zeros((nchc, ncell, jf)),

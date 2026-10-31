@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dpd-stream"
-version = "0.1.0"
+version = "0.2.0"
 description = "Out-of-core dynamic panel GMM: Arellano-Bond difference GMM and Blundell-Bond system GMM, by streamed passes"
 readme = "README.md"
 license = "MIT"
@@ -22,6 +22,7 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3.15",
     "Topic :: Scientific/Engineering",
     "Typing :: Typed",
 ]
@@ -29,7 +30,8 @@ requires-python = ">=3.10"
 dependencies = [
     # the row store, run directories, the formula compiler and the result
     # base classes (hdfe_stream.core's stable names)
-    "hdfe-stream[formula]>=0.6.2",
+    "hdfe-stream[formula]>=0.8.0",   # core.resources and core.profile are new in 0.8.0
+    "stream-limits>=0.1.1",     # thread and memory limits for jobs on a scheduler (0.1.1: Windows memory)
     "polars>=1.37,!=1.41.*",
     "numpy>=1.24",
     "numba>=0.59",

@@ -40,7 +40,7 @@ from .results import DPDMulti, DPDResult
 try:
     __version__ = _version("dpd-stream")
 except PackageNotFoundError:  # pragma: no cover
-    __version__ = "0.1.0"
+    __version__ = "0.2.0"
 
 __all__ = [
     "DPDMulti",

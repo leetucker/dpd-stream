@@ -116,7 +116,7 @@ class _IdTests:
             cc.offset = off
             off += cc.n_codes
         nch = self.n_threads
-        nch_acc = nch if n_acc * m * 16 * nch < 2e9 else 1
+        nch_acc = self._copies(n_acc * m * 16, nch)
         AccU = np.zeros((nch_acc, max(n_acc, 1), m) if general else (1, 1, m))
         AccV = np.zeros_like(AccU)
         SRU = np.zeros((nch, m, m) if rowmode else (1, 1, 1))

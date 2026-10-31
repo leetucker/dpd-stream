@@ -1,5 +1,37 @@
 # Changelog
 
+## 0.2.0
+
+- **Fit resources (CPUs and memory) are constrained to your job's limits automatically.** On a
+  cluster (PBS, Slurm, or a container with cgroup limits), importing `dpd_stream` caps the threads of
+  Polars, numba, BLAS and pyarrow at the job's CPU allocation, and with Polars 2.x gives Polars a
+  memory budget so its streaming operations spill to disk instead of growing. Caveats: the Polars
+  budget is a target for its buffers, not a hard cap on the process, and Polars 1.x has no such
+  option, so there only the threads are capped. The caps must be in place before Polars is
+  imported: import `dpd_stream` first, or call `stream_limits.set_limits()` at the top of the script.
+  With no limit found nothing changes. See "Resource limits and profiling" in the documentation.
+- **`profile=True`: estimate a fit's memory and disk before running it.**
+  `dpd_stream(..., profile=True)` returns a `hdfe_stream.Profile` -- the
+  estimated memory and disk, and `recommend()` for a resource request -- instead
+  of fitting. The instrument count comes from the layout (formula and number of
+  periods, no data pass). It is an upper bound on the columns used, since empty
+  ones are dropped after pass 1.
+- **`max_memory_gb` and `memory_reserve`**: the fixed 8 GB and 2-4 GB thresholds
+  (pass 1's per-thread moment matrices, the cluster sums, the absorbed cells) are
+  replaced by the memory left (the limit, less a reserve, less what the process
+  holds). Per-thread accumulators drop to fewer copies when they would not fit
+  (fewer threads on that pass, same answer); cluster sums and absorbed cells that
+  cannot shrink raise `MemoryError` up front. The limit defaults to the job's
+  allocation (cgroup, `STREAM_LIMITS_MEMORY_GB`, or on PBS `qstat`).
+- **`n_threads=` now limits numba.** It used to set only how many accumulators
+  were allocated; the kernels still ran on every core. It holds numba and BLAS
+  to that many threads for the fit and restores them.
+- **The memory warning counts `Z'Z`.** With the identification tests on (the
+  default), `Z'Z` takes as much per-thread memory as `S1`, and the warning
+  counted only `S1`.
+- **`diagnostics["peak_rss_gb"]`** in every fit.
+- Depends on `stream-limits`, and needs hdfe-stream 0.8.0 or later.
+
 ## 0.1.0
 
 The first version.

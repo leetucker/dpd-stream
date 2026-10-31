@@ -36,10 +36,12 @@ class _Passes:
         for c in general:
             c.offset = off
             off += c.n_codes
-        nch_acc = nch if n_acc * j * 8 * nch < 2e9 else 1
-        if n_acc * j * 8 > 8e9:
+        if general and not self.budget.fits(n_acc * j * 8 / 1e9):
             raise MemoryError(f"clustering by {[c.vars for c in general]}: "
-                              f"{n_acc:,} clusters x {j:,} instruments do not fit in memory")
+                              f"{n_acc:,} clusters x {j:,} instruments need "
+                              f"{n_acc * j * 8 / 1e9:.1f} GB and {self.budget.headroom_gb():.1f} "
+                              f"GB is free ({self.budget}); raise max_memory_gb")
+        nch_acc = self._copies(n_acc * j * 8, nch)
         Acc = np.zeros((nch_acc, max(n_acc, 1), j)) if general else np.zeros((1, 1, j))
         Nacc = {id(c): np.zeros((c.n_codes, j)) for c in nested}
         SR = np.zeros((nch, j, j)) if rowmode else np.zeros((1, 1, 1))

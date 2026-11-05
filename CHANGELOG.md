@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.1
+
+- **Lower memory reading a panel.** Checking that (panel, time) identifies the observations no
+  longer holds a set of every row; repeated times are found as the blocks are written, with the
+  same error and the same results. On 9.6 million rows the fit's memory no longer rises to
+  1.55 GB at that step, and a fit now stays near 1.1 GB from 10 to 24 million rows.
+- **Memory tests.** `pytest -m resource` fits difference and system GMM on a 24-million-row
+  panel under a fixed memory limit; CI runs them on Linux, macOS and Windows. The default
+  `pytest` run leaves them out.
+- Requires hdfe-stream 0.9.0 or later, which reads Parquet in less memory.
+
 ## 0.2.0
 
 - **Fit resources (CPUs and memory) are constrained to your job's limits automatically.** On a

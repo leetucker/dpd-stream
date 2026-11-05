@@ -12,6 +12,9 @@ from dpd_stream.simulate import simulate_dynamic
 
 DATA = Path(__file__).parent / "data"
 
+# resource_runner and the `resource` marker (tests/test_resources.py)
+pytest_plugins = ["stream_limits.pytest_plugin"]
+
 
 def lag_by_time(df: pl.DataFrame, var: str, k: int, panel="id", time="year") -> np.ndarray:
     """`var` lagged k periods by time value (NaN where that period is

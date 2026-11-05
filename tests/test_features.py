@@ -59,6 +59,20 @@ def test_fweights_must_be_constant(panel_data):
                    verbose=False)
 
 
+@pytest.mark.parametrize("where", ["first", "middle", "last"])
+def test_repeated_time_within_a_panel(panel_data, where):
+    """Found while the blocks are written (each holds whole panels, sorted by
+    time), in any panel and with the rows in any order; a time shared by two
+    panels is not a repeat."""
+    ids = panel_data["id"].unique().sort()
+    pid = {"first": ids[0], "middle": ids[len(ids) // 2], "last": ids[-1]}[where]
+    df = pl.concat([panel_data, panel_data.filter(pl.col("id") == pid).head(1)])
+    with pytest.raises(ValueError, match="repeated time values within panel"):
+        dpd_stream(FML, df.sample(fraction=1.0, shuffle=True, seed=2), panel=("id", "year"),
+                   verbose=False, block_mb=0.01)
+    assert dpd_stream(FML, panel_data, panel=("id", "year"), verbose=False).n_obs > 0
+
+
 def test_iterated(panel_data):
     two = dpd_stream(FML, panel_data, panel=("id", "year"), verbose=False)
     it0 = dpd_stream(FML, panel_data, panel=("id", "year"), steps="iterated", maxiter=0,

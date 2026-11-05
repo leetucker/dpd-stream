@@ -86,18 +86,18 @@ def build(lf: pl.LazyFrame, bases, panel, *, tdelta=None, cluster=(), weights=No
             raise ValueError(f"time variable {tvar!r} must be numeric (integer periods), "
                              f"got {schema[tvar]}")
     lf = lf.filter(pl.col(pid).is_not_null() & pl.col(tvar).is_not_null())
+    # (repeated times within a panel are found while the blocks are written,
+    # below: counting the distinct (panel, time) pairs here would hold a set
+    # of every row in memory)
     info = engine.collect(lf.select(
         pl.len().alias("n"), pl.col(tvar).min().alias("tmin"), pl.col(tvar).max().alias("tmax"),
-        pl.struct(pid, tvar).n_unique().alias("nu"), pl.col(pid).n_unique().alias("np"),
+        pl.col(pid).n_unique().alias("np"),
         (pl.col(tvar) != pl.col(tvar).round(0)).any().alias("frac")), "panel structure")
     n = int(info["n"][0])
     if n == 0:
         raise ValueError("no observations with a panel and a time")
     if info["frac"][0]:
         raise ValueError(f"time variable {tvar!r} must hold whole numbers")
-    if int(info["nu"][0]) != n:
-        raise ValueError(f"repeated time values within panel: ({pid}, {tvar}) does not "
-                         "identify the observations")
     tmin, tmax = int(info["tmin"][0]), int(info["tmax"][0])
     if tdelta is None:
         tdelta = 1
@@ -194,6 +194,11 @@ def build(lf: pl.LazyFrame, bases, panel, *, tdelta=None, cluster=(), weights=No
         frame = frame.sort([pid, _T])       # whole panels: sorted by time within each
         ids = frame[pid]
         starts = (ids != ids.shift(1)).fill_null(True).to_numpy()
+        # a block holds whole panels, so a repeated time is two neighbouring rows
+        if ((~starts[1:]) & (np.diff(frame[_T].to_numpy()) == 0)).any():
+            sample.unlink(missing_ok=True)
+            raise ValueError(f"repeated time values within panel: ({pid}, {tvar}) does not "
+                             "identify the observations")
         pcode = np.cumsum(starts).astype(np.int64) - 1 + code
         code = int(pcode[-1]) + 1
         B = (frame.select(base_names).to_numpy().astype(np.float64)

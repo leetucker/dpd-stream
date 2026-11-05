@@ -20,8 +20,10 @@ Windows. On macOS it measures resident memory, which counts the mapped
 scratch files, so there the limit is a looser safety net.
 On Windows, private memory is committed memory: a buffer or an allocator
 segment counts in full once allocated, touched or not (an hdfe-stream logit
-fit had 1.61 GB committed while 1.14 GB was resident). So Windows also gets
-the looser limit, until its own CI figures set a tighter one.
+fit had 1.61 GB committed while 1.14 GB was resident). Measured in CI
+(GitHub's windows-latest, 2 threads): difference GMM 1.46 GB, system GMM
+1.38 GB; the limit there is 1.8 GB, which a fit holding the panel would
+still exceed.
 """
 
 from __future__ import annotations
@@ -38,7 +40,7 @@ pytestmark = pytest.mark.resource
 
 PARTS, PANELS_PER_PART, T = 6, 500_000, 8       # 24 million rows
 BUDGET_GB = 1.0                                 # the fit's max_memory_gb
-LIMIT_GB = {"darwin": 2.6, "win32": 2.6}.get(sys.platform, 1.6)
+LIMIT_GB = {"darwin": 2.6, "win32": 1.8}.get(sys.platform, 1.6)
 FML = "y ~ l(y, 1) + x + w | year | gmm(y, 2:4) + gmm(x, 1:3) + iv(w)"
 
 

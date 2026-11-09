@@ -126,8 +126,7 @@ pip install dpd-stream
 ```
 
 It needs Python 3.10 or later (3.10 to 3.15 are tested). It brings hdfe-stream (whose streaming core
-and result classes it uses), Polars, NumPy, numba and SciPy. On Python 3.15, pyfixest 0.60 (which
-hdfe-stream's formula extra brings in) has no wheels yet and builds from source.
+and result classes it uses), Polars, NumPy, numba and SciPy.
 
 ```{toctree}
 :hidden:

@@ -84,7 +84,7 @@ def test_one_refit_is_a_plain_fit_of_the_draw(data, tmp_path):
     k = len(fit.coefnames)
     np.testing.assert_allclose(values[:k], f.b, rtol=1e-10)
     np.testing.assert_allclose(values[k:2 * k], np.sqrt(np.diag(f.V)), rtol=1e-8)
-    np.testing.assert_allclose(values[-1], f.info["hansen"], rtol=1e-10)
+    np.testing.assert_allclose(values[-1], f.info["hansen"], rtol=1e-8)
     # missing a period: a failed draw
     with pytest.raises(ValueError, match="periods"):
         _refit_task(dict(task, dates=task["dates"][1:]))

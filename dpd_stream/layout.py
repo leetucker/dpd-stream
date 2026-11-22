@@ -118,7 +118,8 @@ class Layout:
             g_xlo=i64([x.xlo for x in g]), g_xhi=i64([x.xhi for x in g]),
             g_xcol=i64([x.xcol0 for x in g]),
             g_xsh=np.array([(list(x.xsh) + [0] * max(nbmax, 1))[:max(nbmax, 1)]
-                            for x in g] or np.zeros((0, 1)), np.int64).reshape(len(g), -1),
+                            for x in g] or np.zeros((0, 1)), np.int64).reshape(
+                len(g), max(nbmax, 1)),
         )
 
     def column_names(self):

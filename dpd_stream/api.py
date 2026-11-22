@@ -137,7 +137,19 @@ def dpd_stream(fml: str, data: Source, panel: tuple, *, system: bool = False,
     if profile:
         return est.profile()
     f = est.fit()
+    # what DPDResult.refit_bootstrap refits with (the job's resources are its own)
+    est.fit_args = dict(
+        system=system, steps=steps, transform=transform, vcov=vcov, gmm=list(gmm or ()),
+        iv=list(iv or ()), collapse=collapse, h=h, small=small, constant=constant, pca=pca,
+        components=components, weights=weights, weights_type=weights_type, nl=nl,
+        nl_weight=nl_weight,
+        **{k: v for k, v in options.items() if k not in _RESOURCE_OPTIONS})
     return _result(est, f)
+
+
+# options that are about the job, not the model: refit_bootstrap sets its own
+_RESOURCE_OPTIONS = {"n_threads", "max_memory_gb", "memory_reserve", "verbose", "logger",
+                     "log_level", "diffsargan", "idtests", "storage", "block_mb"}
 
 
 def _result(est, f) -> DPDResult:
@@ -208,4 +220,22 @@ def _result(est, f) -> DPDResult:
                     iv_cols=[(lay.terms[t], eq, passthru, mz)
                              for t, eq, passthru, mz, _ in lay.iv_cols],
                     complete_terms=[lay.terms[t] for t in lay.complete_terms],
-                    system=est.system, orth=est.orth, weights=est.weights))
+                    system=est.system, orth=est.orth, weights=est.weights,
+                    fml=est.fml, args=getattr(est, "fit_args", None), vkey=key,
+                    moment_sum=i.get("moment_sum"), live_mask=i["live_mask"],
+                    xsh=i["xsh"], keep_names=i["keep_names"], n_rows=est.store.n_rows,
+                    n_panels=est.store.n_panels,
+                    columns=_source_columns(est),
+                    clusterings=[(c.vars, c.nested, c.by_obs, c.is_panel)
+                                 for c in est.store.clusterings]))
+
+
+def _source_columns(est) -> list:
+    """The source columns a fit reads."""
+    cols = list(est.panel)
+    for _, expr in est.spec.bases:
+        cols += expr.meta.root_names()
+    ag = est.absorb_g
+    cols += list(est.cvars) + ([est.weights] if est.weights else [])
+    cols += [ag] if isinstance(ag, str) else list(ag or ())
+    return list(dict.fromkeys(cols))

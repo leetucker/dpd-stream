@@ -156,6 +156,78 @@ class DPDResult(RegressionResult):
         out.vcov_type = key
         return out
 
+    def refit_bootstrap(self, *, reps: int = 199, seed: int | None = None,
+                        coefficients=None, recenter="auto",
+                        draw_standard_errors: bool = True, n_workers: int = 1,
+                        n_threads: int | None = None, max_memory_gb: float | None = None,
+                        memory_reserve: float | None = None, workdir=None,
+                        preprocess_mb: int | None = None):
+        """Bootstrap the fit by resampling whole panels and refitting.
+
+        Draws ``reps`` samples of the panels with replacement (each copy of a
+        panel gets an ID of its own, so its lags and instruments are rebuilt
+        as in the data) and refits the model on each, with the fit's options.
+        With ``vcov={"CRV1": "g"}`` and ``g`` constant within panels, whole
+        clusters are drawn instead, each copy a cluster of its own. This is
+        Stata's ``bootstrap, cluster(id) idcluster(newid): xtabond2 ...``, and
+        it takes about ``reps`` fits.
+
+        By default the moments are recentered at the fit's estimate (Hall and
+        Horowitz 1996): each draw's moment conditions are those of the sample
+        less their value at the estimate, so that they hold in the population
+        the bootstrap draws from. The estimates, the weight matrix, the
+        standard errors and the Hansen statistic of every draw use the
+        recentered moments. They give studentized intervals
+        (``confint(method="studentized")`` or ``"symmetric"``), the intervals to
+        report: with many instruments, and for iterated GMM, they cover far
+        more accurately than the analytic ones. They also give a bootstrap
+        Hansen test (``hansen()``). It agrees with the asymptotic test when
+        instruments are few, and with many it is more conservative still, so
+        it does not repair the Hansen test's weakness with many instruments
+        (see the user guide's "Bootstrap inference"). The percentile, basic and
+        normal intervals and the standard errors are available either way.
+
+        Parameters
+        ----------
+        reps : int, default 199
+            Bootstrap draws.
+        seed : int, optional
+            Seed for the draws. With the same data, the same seed gives the
+            same draws, with any ``n_workers``.
+        coefficients : list of str, optional
+            Bootstrap only these coefficients (exact names).
+        recenter : {"auto", True, False}, default "auto"
+            ``"auto"`` recenters when the model allows it: not with weights,
+            an absorbed ``| g^year`` effect, ``nl()`` or ``pca``, whose draws
+            are then not recentered (``diagnostics["recenter_reason"]`` says
+            why). ``True`` raises in those cases; ``False`` never recenters
+            (the ordinary pairs bootstrap, with no Hansen test).
+        draw_standard_errors : bool, default True
+            Compute each draw's standard errors, which the studentized
+            intervals need. For a two-step fit this is one more pass over each
+            draw (Windmeijer's correction); ``False`` skips it.
+        n_workers : int, default 1
+            Refits run in parallel, each in its own process; ``n_threads``
+            and ``max_memory_gb`` are shared out among them.
+        n_threads, max_memory_gb, memory_reserve, workdir, preprocess_mb
+            For the whole job, as for `dpd_stream`.
+
+        Returns
+        -------
+        DPDBootstrapResult
+            ``tidy()``, ``confint()``, ``standard_errors()``, ``hansen()``.
+            Failed draws (one that lacks a period of the data, or drops a
+            regressor as collinear) are recorded in ``failures()``, never
+            redrawn; inference then needs ``allow_incomplete=True``.
+        """
+        from .bootstrap import refit_bootstrap  # noqa: PLC0415 (imports the estimator)
+
+        return refit_bootstrap(self, reps=reps, seed=seed, coefficients=coefficients,
+                               recenter=recenter, draw_standard_errors=draw_standard_errors,
+                               n_workers=n_workers, n_threads=n_threads,
+                               max_memory_gb=max_memory_gb, memory_reserve=memory_reserve,
+                               workdir=workdir, preprocess_mb=preprocess_mb)
+
     def ar_test(self, order: int = 2) -> dict:
         """The Arellano-Bond test for AR(`order`) in first differences."""
         for a in self.ar:

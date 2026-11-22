@@ -23,6 +23,8 @@ Layout
     inference.py    the algebra after the passes: generalized inverse,
                     Windmeijer, Arellano-Bond, Sargan/Hansen, MMSC
     results.py      DPDResult, DPDMulti
+    bootstrap.py    DPDResult.refit_bootstrap: resample panels (or clusters),
+                    recenter the moments and refit; DPDBootstrapResult
     simulate.py     simulate_dynamic(), truth_dynamic()
 """
 
@@ -35,14 +37,17 @@ from hdfe_stream.core.workspace import cleanup
 
 from ._frontend import Gmm, Iv
 from .api import dpd_stream
+from .bootstrap import BootstrapFailureWarning, DPDBootstrapResult
 from .results import DPDMulti, DPDResult
 
 try:
     __version__ = _version("dpd-stream")
 except PackageNotFoundError:  # pragma: no cover
-    __version__ = "0.2.1"
+    __version__ = "0.3.0"
 
 __all__ = [
+    "BootstrapFailureWarning",
+    "DPDBootstrapResult",
     "DPDMulti",
     "DPDResult",
     "Gmm",

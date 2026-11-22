@@ -13,6 +13,7 @@ python examples/quickstart.py
 | [Arellano and Bond's employment equations](arellano_bond.md) | Arellano and Bond (1991) and Blundell and Bond (1998), matching Roodman's (2009) xtabond2 output |
 | [Choosing instruments](instruments.md) | Lag limits, `collapse`, forward orthogonal deviations, PCA, Hansen and difference-in-Hansen tests, MMSC |
 | [Standard errors](inference.md) | Windmeijer's correction, one- and two-way clustering, `small` |
+| [Bootstrap inference](bootstrap.md) | Resampling panels: studentized intervals, the bootstrap Hansen test, long-run effects, iterated GMM |
 | [Absorbed period effects](absorbed.md) | Region-by-year effects in difference GMM |
 | [Ahn–Schmidt moments](nonlinear.md) | Nonlinear moment conditions for persistent series |
 | [Identification tests](identification.md) | Kleibergen–Paap and Sanderson–Windmeijer tests |
@@ -50,6 +51,7 @@ quickstart
 arellano_bond
 instruments
 inference
+bootstrap
 absorbed
 nonlinear
 identification

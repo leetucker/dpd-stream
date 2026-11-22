@@ -1,5 +1,36 @@
 # Changelog
 
+## 0.3.0
+
+- **The bootstrap: `fit.refit_bootstrap()`.** It resamples whole panels with replacement,
+  each copy with an ID of its own, and refits the model on each draw with the fit's options.
+  With `vcov={"CRV1": "g"}` and `g` constant within panels, it resamples whole clusters, each
+  copy a cluster of its own. This is Stata's `bootstrap, cluster() idcluster(): xtabond2`.
+  - **Recentered moments.** By default each draw's moments are recentered at the fit's
+    estimate (Hall and Horowitz 1996): the estimates, the weight matrix, Windmeijer's
+    correction and the Hansen statistic of every draw use them. They give studentized
+    intervals (`confint(method="studentized")` or `"symmetric"`), and a bootstrap p-value for
+    the Hansen test (`hansen()`). In a Monte Carlo study with many instruments, studentized
+    intervals cover 93% to 98% of the time, against 80% for iterated GMM's analytic
+    intervals. The bootstrap Hansen test does not improve on the asymptotic one: with many
+    instruments it is more conservative still.
+  - **First-order inference.** Bootstrap standard errors and percentile, basic and normal
+    intervals are available for every model. Draws are not recentered with weights, an
+    absorbed `| g^year` effect, `nl()` or `pca` (`recenter="auto"` says why;
+    `recenter=True` raises an error), and `recenter=False` turns recentering off.
+  - **Refits.** They run in parallel with `n_workers=`, give the same draws for a seed
+    whatever the number of workers, and skip the statistics a draw does not need. A draw
+    that lacks a period or drops a regressor as collinear is recorded as failed, never
+    redrawn.
+  - **Refused.** Multi-way clustering, and clustering by a variable that varies within
+    panels, raise an error.
+  - See [Bootstrap inference](https://leetucker.github.io/dpd-stream/examples/bootstrap.html),
+    which includes a Monte Carlo study of the intervals' coverage and the Hansen test's size
+    and power.
+- **A model whose only instruments are IV-style** (`iv()`, no `gmm()`) no longer fails while
+  laying out the instruments.
+- Requires hdfe-stream 0.12.0 or later, whose refit bootstrap this uses.
+
 ## 0.2.1
 
 - **Lower memory reading a panel.** Checking that (panel, time) identifies the observations no

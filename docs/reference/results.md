@@ -12,6 +12,7 @@
    .. automethod:: confint
    .. automethod:: wald_test
    .. automethod:: with_vcov
+   .. automethod:: refit_bootstrap
    .. automethod:: ar_test
    .. automethod:: long_run
    .. automethod:: predict
@@ -25,4 +26,18 @@
 
 .. autoclass:: DPDMulti
    :no-members:
+
+.. autoclass:: DPDBootstrapResult
+   :no-members:
+
+   .. automethod:: tidy
+   .. automethod:: confint
+   .. automethod:: standard_errors
+   .. automethod:: hansen
+   .. automethod:: draws
+   .. automethod:: standard_error_draws
+   .. automethod:: failures
+   .. automethod:: summary_dict
+
+.. autoclass:: BootstrapFailureWarning
 ```

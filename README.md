@@ -31,6 +31,9 @@ fit.summary()
 **Tests and inference**
 - Arellano–Bond AR(m), Sargan, Hansen, difference-in-Hansen.
 - Clustering, one- and multi-way.
+- The bootstrap: whole panels (or clusters) resampled and refitted, with the
+  moments recentered, for studentized intervals and a bootstrap Hansen test
+  (`fit.refit_bootstrap()`).
 - `small`-sample statistics.
 - Weights.
 

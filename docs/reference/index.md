@@ -11,6 +11,8 @@ which are in `dpd_stream.simulate`.
 | **[Results](results.md)** | |
 | `DPDResult` | a fitted model: coefficients, variances, specification tests, residuals |
 | `DPDMulti` | several results, for the reporting methods |
+| `DPDBootstrapResult` | a fit's refit bootstrap (`DPDResult.refit_bootstrap`): intervals, the bootstrap Hansen test |
+| `BootstrapFailureWarning` | some of a bootstrap's refits failed |
 | **[Utilities](utilities.md)** | |
 | `etable` | regression tables, through pyfixest (hdfe-stream's) |
 | `bonferroni`, `holm` | multiple-testing corrections (hdfe-stream's) |

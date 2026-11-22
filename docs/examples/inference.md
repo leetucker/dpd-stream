@@ -8,7 +8,9 @@ biased downward in finite samples. Windmeijer (2005) derived a correction
 for the uncertainty in the first-step estimate that the weight matrix uses.
 It is the default, `vcov="robust"`: clustered by panel, and
 Windmeijer-corrected for two-step. `with_vcov("iid")` gives the uncorrected
-two-step errors, and every two-step fit carries its one-step results.
+two-step errors, and every two-step fit carries its one-step results. For
+iterated GMM, many instruments or functions of the coefficients, see
+[Bootstrap inference](bootstrap.md).
 
 ```python
 two = dpd_stream(F, df, panel=("id", "year"))

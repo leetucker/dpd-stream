@@ -73,6 +73,15 @@ benchmarks/external/.r/bin/Rscript -e 'options(repos = "https://cloud.r-project.
 
 pdynmc (and optimx) are not on conda-forge; they come from CRAN.
 
+**momentfit** (R) checks the bootstrap's recentered refits; `tests/test_momentfit.py` uses
+its cached results, `tests/data/momentfit_recenter.json`. To remake them, with momentfit
+installed in that R (`install.packages("momentfit")`):
+
+```bash
+python benchmarks/external/momentfit_recenter_export.py
+benchmarks/external/.r/bin/Rscript benchmarks/external/momentfit_recenter_check.R
+```
+
 **pydynpd** (`external/pydynpd_fit.py`) runs in an environment of its own,
 because it needs NumPy older than 2.3:
 

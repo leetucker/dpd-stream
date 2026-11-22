@@ -636,7 +636,7 @@ def xtabond2(panel, time, data, y, x, gmm=(), iv=(), *, system=True, constant=Tr
                   pca_components=pca_info.get("components"),
                   pca_eigenvalues=pca_info.get("eigenvalues"), kmo=pca_info.get("kmo"),
                   Z_names=ziv_names + zgmm_names,
-                  dense=dict(Z=Z, X=X, Y=Y, touse=touse, j_IV=j_IV))
+                  dense=dict(Z=Z, X=X, Y=Y, touse=touse, j_IV=j_IV, S1=S1))
 
 
 def _combos(n):
@@ -845,3 +845,68 @@ def _ar_tests(artests, onestepnonrobust, h, N, T, sig2, orthogonal, system, Z, X
         z = s.sum() / np.sqrt(wHw + tmp @ (m2VZXA @ ZHw + pV @ tmp))
         out.append((float(z), float(2 * stats.norm.sf(abs(z)))))
     return out
+
+
+def recentered(o, ghat, n_shift, *, steps=2, groups=None, small=False, tol=1e-9, maxiter=100):
+    """Hall and Horowitz's (1996) recentered GMM on the sample of the fit `o`
+    (a bootstrap draw): the moments g_i(b) - ghat / n_shift, i a panel (or, with
+    `groups`, a panel's cluster: an array mapping panels to cluster codes),
+    throughout: the estimating equations of every step, the weight matrix, the
+    Windmeijer correction and the Hansen statistic. With `groups` the moment
+    covariance has the clustering's small-sample factor G/(G - 1) (G the clusters
+    with observations), as xtabond2. Returns (b1, b, V, hansen), V the
+    Windmeijer-corrected two-step variance (for steps=1, the robust one-step one;
+    for "iterated", the uncorrected one)."""
+    Z, X, Y, S1 = (o.dense[k] for k in ("Z", "X", "Y", "S1"))
+    ZX = np.einsum("nri,nrk->ik", Z, X)
+    ZYs = np.einsum("nri,nr->i", Z, Y) - ghat
+    j, k = ZX.shape
+
+    def by_group(a):
+        if groups is None:
+            return a
+        out = np.zeros((int(groups.max()) + 1, *a.shape[1:]))
+        np.add.at(out, groups, a)
+        return out
+
+    ZXi = by_group(np.einsum("nri,nrk->nik", Z, X))
+    has_obs = by_group(o.dense["touse"].any(1).astype(float)) > 0
+    f = 1.0
+    if groups is not None and small:
+        G = int(has_obs.sum())
+        f = G / (G - 1)
+
+    def centered(b):
+        M = by_group(np.einsum("nri,nr->ni", Z, Y - X @ b)) - ghat / n_shift
+        return f * M.T @ M, M
+
+    A1, _ = invsym(S1)
+    V1, _ = invsym(ZX.T @ A1 @ ZX)
+    b1 = V1 @ ZX.T @ A1 @ ZYs
+    S, M1 = centered(b1)
+    VXZA = V1 @ ZX.T @ A1
+    V1r = VXZA @ S @ VXZA.T
+    A2, _ = invsym(S)
+    V2, _ = invsym(ZX.T @ A2 @ ZX)
+    b2 = V2 @ ZX.T @ A2 @ ZYs
+    if steps == "iterated":
+        for _ in range(maxiter):
+            S, _M = centered(b2)
+            A2, _ = invsym(S)
+            V2, _ = invsym(ZX.T @ A2 @ ZX)
+            b_new = V2 @ ZX.T @ A2 @ ZYs
+            done = np.max(np.abs(b_new - b2)) <= tol * (1 + np.max(np.abs(b2)))
+            b2 = b_new
+            if done:
+                break
+    Ze = ZYs - ZX @ b2
+    v = A2 @ Ze
+    hansen = float(Ze @ v)
+    if steps == 1:
+        return b1, b1, V1r, hansen
+    if steps == "iterated":
+        return b1, b2, V2, hansen
+    Dr = f * (np.einsum("n,nik->ik", M1 @ v, ZXi) + np.einsum("ni,nlk,l->ik", M1, ZXi, v))
+    D = V2 @ ZX.T @ A2 @ Dr
+    V = V2 + D @ V1r @ D.T + D @ V2 + V2 @ D.T
+    return b1, b2, (V + V.T) / 2, hansen

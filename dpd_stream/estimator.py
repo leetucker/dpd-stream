@@ -117,7 +117,9 @@ class DPD(_Passes, _Absorb, _IdTests, _NonlinearMoments):
                  storage="disk", block_mb=64, tol=1e-9, maxiter=100, n_threads=None,
                  idtests="auto", nl=None, nl_weight=1.0, verbose=True, logger=None,
                  log_level=20,
-                 polars_engine="cpu", max_memory_gb=None, memory_reserve=None):
+                 polars_engine="cpu", max_memory_gb=None, memory_reserve=None,
+                 estimates_only=False, draw_se=False, moment_shift=None,
+                 fixed_columns=None, fixed_xsh=None):
         if not (isinstance(panel, (tuple, list)) and len(panel) == 2):
             raise ValueError("panel must be (panel id, time), e.g. panel=('firm', 'year')")
         if transform not in ("fd", "fod"):
@@ -161,6 +163,19 @@ class DPD(_Passes, _Absorb, _IdTests, _NonlinearMoments):
         self.log = _log_fn(verbose, logger, log_level)
         self.logger = logger
         self.engine = PolarsEngine(polars_engine)
+        # Internal, for the refits of the bootstrap (`bootstrap.py`):
+        # `estimates_only` skips everything a draw does not need (the AR,
+        # difference-in-Hansen and identification tests, and Windmeijer's
+        # correction unless `draw_se`); `moment_shift` = (g, N) recenters the
+        # moments at the original fit's sum g (over all instrument columns),
+        # N the draw's panels or clusters; `fixed_columns` (a mask over the
+        # columns) and `fixed_xsh` fix the instrument columns to the original
+        # fit's, so that the shift lines up with them.
+        self.estimates_only, self.draw_se = bool(estimates_only), bool(draw_se)
+        self.moment_shift = moment_shift
+        self.fixed_columns, self.fixed_xsh = fixed_columns, fixed_xsh
+        if self.estimates_only:
+            self.artests, self.diffsargan, self.idtests = 0, False, False
 
     # ------------------------------------------------------------------ driver
     def fit(self):
@@ -395,6 +410,12 @@ class DPD(_Passes, _Absorb, _IdTests, _NonlinearMoments):
         whole data set; this moves it within each panel.) Returns whether
         any moved."""
         moved = False
+        if self.fixed_xsh is not None:
+            for g, xsh in zip(self.lay.gmm, self.fixed_xsh, strict=True):
+                if xsh is not None and any(xsh):
+                    g.xsh = list(xsh)
+                    moved = True
+            return moved
         for gi, g in enumerate(self.lay.gmm):
             if not (g.extra and g.collapse):
                 continue
@@ -470,7 +491,12 @@ class DPD(_Passes, _Absorb, _IdTests, _NonlinearMoments):
         ZX, ZY, S1, Q = sums.ZX * c, sums.ZY * c, sums.S1 * c, sums.Q * c
         # drop the instrument columns that are empty in the sample (the
         # generalized inverse would drop them; the others keep their order)
-        live = np.flatnonzero(sums.colnz)
+        if self.fixed_columns is not None:
+            if len(self.fixed_columns) != lay.j:
+                raise ValueError("the instrument columns differ from the original fit's")
+            live = np.flatnonzero(self.fixed_columns)
+        else:
+            live = np.flatnonzero(sums.colnz)
         cmap = np.full(lay.j, -1, np.int64)
         cmap[live] = np.arange(len(live))
         self.live = live
@@ -525,6 +551,19 @@ class DPD(_Passes, _Absorb, _IdTests, _NonlinearMoments):
             if self.Lnl == 0:
                 warn("no panel has the periods the Ahn-Schmidt moments need", self.logger)
         self.P = P
+        # the bootstrap's recentered moments (Hall and Horowitz 1996): every
+        # step solves with Z'y - g, and the moment covariance is centered
+        # (`_center_S`); ZY_raw keeps the sample's own sums
+        ZY_raw, ghat = ZY, None
+        if self.moment_shift is not None:
+            if P is not None or ab or self.nl or self.weights:
+                raise ValueError("recentered moments are not available with pca, an "
+                                 "absorbed effect, nl() or weights")
+            ghat = np.asarray(self.moment_shift[0], float)[live]
+            self.shift_n = float(self.moment_shift[1])
+            ZY = ZY - ghat
+        self.ghat = ghat
+        ZX_allk = ZX
         j = ZXk.shape[0]
         self.jc_final = j
         if j < k:
@@ -606,7 +645,7 @@ class DPD(_Passes, _Absorb, _IdTests, _NonlinearMoments):
                  bfin, sig2, mom, iterations) = self._two_step_nl(
                     info, b1, keep, full, steps, Qk, wttot, res)
             else:
-                S = proj_S = self._proj_S(info["S"])
+                S = proj_S = self._center_S(self._proj_S(info["S"]), ZY_raw - ZXk @ b1)
                 VXZA = V1 @ ZXk.T @ A1
                 V1robust = VXZA @ proj_S @ VXZA.T
                 A2, _ = inf.invsym(proj_S)
@@ -631,7 +670,7 @@ class DPD(_Passes, _Absorb, _IdTests, _NonlinearMoments):
                             point_S = (full(b_prev), dl)
                         else:
                             info = self._resid(full(b_prev), 0)
-                        S = self._proj_S(info["S"])
+                        S = self._center_S(self._proj_S(info["S"]), ZY_raw - ZXk @ b_prev)
                         A2, _ = inf.invsym(S)
                         b2, V2 = inf.gmm(ZXk, ZY, A2)
                         iterations = it + 3
@@ -649,10 +688,17 @@ class DPD(_Passes, _Absorb, _IdTests, _NonlinearMoments):
                 d2 = x2 = None
                 if ab and steps != 1:
                     d2, x2 = self._cell_effects(full(b2), keep, A2, info["cross"], ZXk, ZY, b2)
-                if steps == 2 and self.robust and not ab:
+                if (steps == 2 and self.robust and not ab
+                        and (not self.estimates_only or self.draw_se)):
                     self.log("pass 3: Windmeijer correction")
                     v_full = self._unproj(A2Ze)
-                    Draw = proj(self._windmeijer(full(b1), v_full, info)[:, keep])
+                    Draw = self._windmeijer(full(b1), v_full, info)
+                    if ghat is not None:
+                        # the centered moments g_i - g/N in place of g_i
+                        f = self._shift_factor()
+                        Draw = Draw - f / self.shift_n * (
+                            np.outer(ghat, ZX_allk.T @ v_full) + ZX_allk * (ghat @ v_full))
+                    Draw = proj(Draw[:, keep])
                     V2robust = inf.windmeijer(V2, ZXk, A2, Draw, V1robust)
                 if steps == 1:
                     pV, pA, pVr, bfin = V1, A1, V1robust, b1
@@ -689,7 +735,7 @@ class DPD(_Passes, _Absorb, _IdTests, _NonlinearMoments):
         if steps == 1:
             V = V1robust if self.robust else V1
         elif steps == 2:
-            V = V2robust if self.robust else V2
+            V = V2robust if (self.robust and V2robust is not None) else V2
         else:
             V = V2
         V = (V + V.T) / 2
@@ -779,6 +825,17 @@ class DPD(_Passes, _Absorb, _IdTests, _NonlinearMoments):
             res["absorbed"] = dict(term=self.spec.time_effects, effects=n_hidden,
                                    method="dummies")
         res["coef_all"] = {lay.xnames[kk]: float(b[i]) for i, kk in enumerate(keep)}
+        res["keep_names"] = [lay.xnames[kk] for kk in keep]
+        if P is None and not ab and not self.Lnl:
+            # what the bootstrap recenters at: the moments' sum at the final
+            # estimate, over every instrument column (zero where empty)
+            msum = np.zeros(lay.j)
+            msum[live] = ZY_raw - ZXk @ bfin
+            res["moment_sum"] = msum
+        live_mask = np.zeros(lay.j, bool)
+        live_mask[live] = True
+        res["live_mask"] = live_mask
+        res["xsh"] = [list(g.xsh) if (g.extra and g.collapse) else None for g in lay.gmm]
         if hansen is not None:
             res["mmsc"] = inf.mmsc(hansen, res.get("j0_nl", j0), k, n_obs)
         res["idtests"] = None
@@ -807,6 +864,26 @@ class DPD(_Passes, _Absorb, _IdTests, _NonlinearMoments):
                                 for kk, v in res["onestep_vcovs"].items()}
         res["names"] = [res["names"][i] for i in shown]
         res["dropped"] = [d for d in res["dropped"] if d not in tnames]
+
+    def _shift_factor(self):
+        """The factor of the moment covariance's one clustering (its small-sample
+        G/(G - 1)), 1 without one."""
+        clus = self.clusters
+        if not clus:
+            return 1.0
+        if len(clus) != 1:
+            raise ValueError("recentered moments need one clustering")
+        c = clus[0]
+        return c.sign * (c.n / (c.n - 1) if self.small else 1.0)
+
+    def _center_S(self, S, Ze):
+        """With recentered moments, S of g_i - g/N from S of g_i and Z'e = sum g_i:
+        S - f (Z'e g' + g e'Z - g g') / N."""
+        if self.ghat is None:
+            return S
+        g, n = self.ghat, self.shift_n
+        C = np.outer(Ze, g)
+        return S - self._shift_factor() / n * (C + C.T - np.outer(g, g))
 
     def _proj_S(self, S):
         return S if self.P is None else self.P.T @ S @ self.P
